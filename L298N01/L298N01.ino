@@ -1,6 +1,6 @@
 // L298N Motor Driver Demo for Single 5V DC Motor
 // This sketch demonstrates basic motor control: forward, stop, backward
-// Wiring: See README.md for detailed connections.
+// Wiring: See README.md for detailed connections. 
 
 // Define pins for L298N
 #define IN1 8   // Input 1 for motor direction
@@ -40,6 +40,8 @@ unsigned long holdStartTime;
 unsigned long reverseStartTime;
 unsigned long motor1StartTime;
 unsigned long motor2ForwardDuration;
+
+
 
 void setup() {
   // Initialize serial communication for debugging
