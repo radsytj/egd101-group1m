@@ -13,10 +13,11 @@
 #define LIMIT_SWITCH 2  // Microswitch for limit
 
 // Configurable delays (in milliseconds)
-#define HOLD_DELAY 3000  // Delay before motor 2 reverses
-#define MOTOR1_FORWARD_TIME 2000  // Motor 1 forward run time
-#define MOTOR1_PAUSE_TIME 2000  // Motor 1 pause time (added to motor2ForwardDuration to act as a buffer)
-#define MOTOR1_REVERSE_TIME 2000  // Motor 1 reverse run time
+#define HOLD_DELAY 4000  // Delay before motor 2 reverses
+#define HOLD_DELAY_SHORT 1000  // Shorter delay for pause between 2 and 5 second runs of motor 2
+#define MOTOR1_FORWARD_TIME 1000  // Motor 1 forward run time
+#define MOTOR1_PAUSE_TIME 1000  // Motor 1 pause time (added to motor2ForwardDuration to act as a buffer)
+#define MOTOR1_REVERSE_TIME 1000  // Motor 1 reverse run time
 
 // Motor speeds
 #define MOTOR1_SPEED 255  // Full speed for 5V motor
@@ -135,7 +136,7 @@ void loop() {
       startMotor1Forward();
       motor1StartTime = millis();
       motor1State = 1;
-    }
+    } 
   } else if (motor2State == 2) {
     // Holding position
     if (millis() - holdStartTime >= HOLD_DELAY) {
@@ -148,15 +149,35 @@ void loop() {
     }
   } else if (motor2State == 3) {
     // Reversing for the same duration as forward
-    if (millis() - reverseStartTime >= motor2ForwardDuration) {
+    if (millis() - reverseStartTime >= 2000) {
       if (DEBUG_SERIAL) {
         Serial.println("[STATE 3→4] Reverse complete - Motor 2 stopped (cycle done)");
       }
+      holdMotor2();
+      holdStartTime = millis();
+      motor2State = 4;
+    }
+  } else if (motor2State == 4) {
+    //Pause again
+    if (millis() - holdStartTime >= HOLD_DELAY_SHORT) {
+      if (DEBUG_SERIAL) {
+        Serial.println("[STATE 4→5] Hold delay complete - Starting Motor 2 final step");
+      }
+      powerOnTime = millis();
+      startMotor2Forward();
+      motor2State = 5;
+    }
+  } else if (motor2State == 5) {
+    // Final forward run for 5 seconds
+    if (millis() - powerOnTime >= 5000) {
+      if (DEBUG_SERIAL) {
+        Serial.println("[STATE 5→6] Final forward complete - Motor 2 stopped (cycle done)");
+      }
       stopMotor2();
-      motor2State = 4;  // Done
+      motor2State = 6;  // Done
     }
   }
-  // State 4: Done, no further action
+  // State 6: Done, no further action
 
   // Motor 1 sequence (independent, triggered by limit)
   if (motor1State == 1) {
@@ -171,7 +192,7 @@ void loop() {
     }
   } else if (motor1State == 2) {
     // Pause
-    if (millis() - motor1StartTime >= (motor2ForwardDuration + MOTOR1_PAUSE_TIME)) {
+    if (millis() - motor1StartTime >= MOTOR1_PAUSE_TIME) {
       if (DEBUG_SERIAL) {
         Serial.println("[MOTOR1 2→3] Pause complete - Motor 1 reversing");
       }
@@ -188,11 +209,11 @@ void loop() {
         Serial.println("[MOTOR1 3→4] Reverse complete - Motor 1 stopped (sequence done)");
       }
     }
-  }
+  } 
   // Motor1State 4: Done, no further action
 
   // Check if both motors are complete - enter waiting for reset state
-  if (motor2State == 4 && motor1State == 4 && !waitingForReset) {
+  if (motor2State == 6 && motor1State == 4 && !waitingForReset) {
     if (DEBUG_SERIAL) {
       Serial.println("\n[COMPLETE] Both motors finished - Waiting for power switch reset");
       Serial.println("Turn power OFF then back ON to run another cycle\n");
